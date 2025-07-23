@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>اختبار براء</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #f0f8ff;
+      color: #333;
+      margin: 0;
+      padding: 0 15px;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    .container {
+      max-width: 480px;
+      width: 100%;
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 0 15px rgba(0,0,0,0.1);
+      padding: 25px;
+      box-sizing: border-box;
+      text-align: center;
+    }
+    h1 {
+      margin-bottom: 10px;
+      color: #004080;
+    }
+    button {
+      background-color: #0077cc;
+      border: none;
+      padding: 12px 25px;
+      color: white;
+      font-size: 1.1rem;
+      border-radius: 8px;
+      cursor: pointer;
+      margin-top: 15px;
+      transition: background-color 0.3s ease;
+    }
+    button:hover {
+      background-color: #005fa3;
+    }
+    .hidden {
+      display: none;
+    }
+    .question {
+      font-size: 1.2rem;
+      margin-bottom: 15px;
+    }
+    .answers {
+      list-style: none;
+      padding: 0;
+      margin: 0 auto 20px auto;
+      max-width: 320px;
+      text-align: right;
+    }
+    .answers li {
+      margin-bottom: 12px;
+    }
+    .answers button {
+      width: 100%;
+      background-color: #e7f0ff;
+      color: #004080;
+      font-weight: 600;
+      border-radius: 6px;
+      border: 2px solid transparent;
+      padding: 10px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: border-color 0.3s ease, background-color 0.3s ease;
+    }
+    .answers button:hover {
+      background-color: #d0e1ff;
+    }
+    .answers button.correct {
+      border-color: #2e8b57;
+      background-color: #c8f7c5;
+      color: #2e8b57;
+      cursor: default;
+    }
+    .answers button.wrong {
+      border-color: #cc4b37;
+      background-color: #f7c5c0;
+      color: #cc4b37;
+      cursor: default;
+    }
+    .score {
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: #004080;
+      margin-bottom: 20px;
+    }
+    input[name="playerName"] {
+      padding: 8px 10px;
+      font-size: 1rem;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      width: 100%;
+      box-sizing: border-box;
+      margin-top: 10px;
+      margin-bottom: 15px;
+      text-align: center;
+    }
+    .players-list {
+      margin-top: 15px;
+      text-align: left;
+      font-size: 0.9rem;
+      max-height: 120px;
+      overflow-y: auto;
+      border-top: 1px solid #ccc;
+      padding-top: 10px;
+    }
+    .players-list strong {
+      color: #0077cc;
+    }
+  </style>
+</head>
+<body>
+  <div class="container" id="start-screen">
+    <h1>نورتو على اختبار براء</h1>
+    <label for="playerName">اكتب اسمك:</label>
+    <input type="text" id="playerName" placeholder="اسم اللاعب" />
+    <button id="start-btn" disabled>ابدأ الاختبار</button>
+    <div class="players-list" id="players-list"></div>
+  </div>
+
+  <div class="container hidden" id="quiz-screen">
+    <div class="question" id="question"></div>
+    <ul class="answers" id="answers"></ul>
+    <button id="next-btn" class="hidden">السؤال التالي</button>
+  </div>
+
+  <div class="container hidden" id="result-screen">
+    <div class="score" id="score"></div>
+    <button id="retry-btn">أعد الاختبار</button>
+    <button id="change-player-btn">تغيير اللاعب</button>
+  </div>
+
+  <script>
+    const playersKey = 'baraaQuizPlayers';
+
+    const questions = [
+      {
+        question: "متى عيد ميلادي؟",
+        answers: ["يناير", "أبريل", "يونيو"],
+        correct: 1
+      },
+      {
+        question: "وش أكليتي المفضلة؟",
+        answers: ["بيتزا", "بشاميل", "شاورما"],
+        correct: 1
+      },
+      {
+        question: "وين أعيش؟",
+        answers: ["الإمارات", "تركيا", "فرنسا"],
+        correct: 1
+      },
+      {
+        question: "شخصيتي؟",
+        answers: ["عصبي", "أي", "لا", "تقريبًا"],
+        correct: 3
+      },
+      {
+        question: "أحب أهلي؟",
+        answers: ["لا", "شوي", "أي"],
+        correct: 2
+      },
+      {
+        question: "وش دولتي المفضلة؟",
+        answers: ["مصر ولبنان", "تركيا وفرنسا", "سوريا والسعودية", "العراق والإمارات"],
+        correct: 2
+      },
+      {
+        question: "كم طولي؟",
+        answers: ["154", "160", "170", "176"],
+        correct: 3
+      }
+    ];
+
+    let shuffledQuestions = [];
+    let currentQuestionIndex = 0;
+    let score = 0;
+    let playerName = '';
+    let players = {};
+
+    const startScreen = document.getElementById('start-screen');
+    const quizScreen = document.getElementById('quiz-screen');
+    const resultScreen = document.getElementById('result-screen');
+    const playerNameInput = document.getElementById('playerName');
+    const startBtn = document.getElementById('start-btn');
+    const questionEl = document.getElementById('question');
+    const answersEl = document.getElementById('answers');
+    const nextBtn = document.getElementById('next-btn');
+    const scoreEl = document.getElementById('score');
+    const retryBtn = document.getElementById('retry-btn');
+    const changePlayerBtn = document.getElementById('change-player-btn');
+    const playersListEl = document.getElementById('players-list');
+
+    // Load players from localStorage
+    function loadPlayers() {
+      const data = localStorage.getItem(playersKey);
+      if (data) {
+        players = JSON.parse(data);
+      } else {
+        players = {};
+      }
+      renderPlayersList();
+    }
+
+    function savePlayers() {
+      localStorage.setItem(playersKey, JSON.stringify(players));
+      renderPlayersList();
+    }
+
+    function renderPlayersList() {
+      if (Object.keys(players).length === 0) {
+        playersListEl.textContent = 'لا يوجد لاعبين سابقين';
+        return;
+      }
+      playersListEl.innerHTML = '<strong>لاعبين سابقين ونتائجهم:</strong><br>';
+      for (const [name, score] of Object.entries(players)) {
+        playersListEl.innerHTML += `${name}: ${score} / ${questions.length} <br>`;
+      }
+    }
+
+    // Enable start button only if name entered
+    playerNameInput.addEventListener('input', () => {
+      startBtn.disabled = playerNameInput.value.trim() === '';
+    });
+
+    startBtn.addEventListener('click', () => {
+      playerName = playerNameInput.value.trim();
+      if (!playerName) return;
+      score = 0;
+      currentQuestionIndex = 0;
+      shuffledQuestions = shuffleArray([...questions]);
+      startScreen.classList.add('hidden');
+      quizScreen.classList.remove('hidden');
+      resultScreen.classList.add('hidden');
+      showQuestion();
+    });
+
+    nextBtn.addEventListener('click', () => {
+      currentQuestionIndex++;
+      if (currentQuestionIndex < shuffledQuestions.length) {
+        showQuestion();
+      } else {
+        showResult();
+      }
+    });
+
+    retryBtn.addEventListener('click', () => {
+      score = 0;
+      currentQuestionIndex = 0;
+      shuffledQuestions = shuffleArray([...questions]);
+      quizScreen.classList.remove('hidden');
+      resultScreen.classList.add('hidden');
+      showQuestion();
+    });
+
+    changePlayerBtn.addEventListener('click', () => {
+      playerName = '';
+      playerNameInput.value = '';
+      startBtn.disabled = true;
+      startScreen.classList.remove('hidden');
+      quizScreen.classList.add('hidden');
+      resultScreen.classList.add('hidden');
+    });
+
+    function showQuestion() {
+      resetState();
+      const currentQ = shuffledQuestions[currentQuestionIndex];
+      questionEl.textContent = `${currentQuestionIndex + 1}. ${currentQ.question}`;
+      currentQ.answers.forEach((answer, index) => {
+        const button = document.createElement('button');
+        button.textContent = answer;
+        button.addEventListener('click', () => selectAnswer(index));
+        answersEl.appendChild(button);
+      });
+    }
+
+    function resetState() {
+      nextBtn.classList.add('hidden');
+      while (answersEl.firstChild) {
+        answersEl.removeChild(answersEl.firstChild);
+      }
+    }
+
+    function selectAnswer(selectedIndex) {
+      const currentQ = shuffledQuestions[currentQuestionIndex];
+      const buttons = answersEl.querySelectorAll('button');
+      buttons.forEach((btn, idx) => {
+        btn.disabled = true;
+        if (idx === currentQ.correct) {
+          btn.classList.add('correct');
+        }
+        if (idx === selectedIndex && idx !== currentQ.correct) {
+          btn.classList.add('wrong');
+        }
+      });
+      if (selectedIndex === currentQ.correct) {
+        score++;
+      }
+      nextBtn.classList.remove('hidden');
+    }
+
+    function showResult() {
+      quizScreen.classList.add('hidden');
+      resultScreen.classList.remove('hidden');
+      scoreEl.textContent = `${playerName}، حصلت على ${score} من ${shuffledQuestions.length} أسئلة صحيحة!`;
+      players[playerName] = score;
+      savePlayers();
+    }
+
+    // Utility function to shuffle array (Fisher-Yates)
+    function shuffleArray(array) {
+      let currentIndex = array.length, randomIndex;
+      while (currentIndex !== 0) {
+        randomIndex = Math.floor(Math.random() * currentIndex);
+        currentIndex--;
+        [array[currentIndex], array[randomIndex]] = [array[randomIndex], array[currentIndex]];
+      }
+      return array;
+    }
+
+    // Initial load
+    loadPlayers();
+  </script>
+</body>
+</html>
